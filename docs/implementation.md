@@ -188,7 +188,49 @@ Admin → Origin (/admin/purge/:key) → Pub/Sub channel → all Edge Nodes (del
 
 ---
 
-## 8. Benchmarking Plan (to fill in X% and Y%)
+## 8. Benchmarking Plan (results measured)
+
+**Measured results** (240 requests/phase, concurrency 10, `CLIENT_LOC=singapore`, Docker Compose
+on one Windows machine):
+
+| Metric | Result |
+|---|---|
+| Baseline (direct-to-origin) avg latency | 122.4 ms (p95 142.0) |
+| CDN path avg latency (cache HIT) | 40.9 ms (p95 60.1) |
+| CDN path avg latency (cache MISS) | 225.6 ms |
+| Latency reduction (warm cache vs. baseline) | **66.6%** |
+| Cache hit ratio | **95.8%** (230 hits / 10 misses) |
+| Invalidation — purge → all nodes serving fresh content | 127 ms (us 49 / eu 80 / asia 117) |
+
+The invalidation figure is end-to-end until each node serves fresh content, so it includes that
+edge's simulated origin re-fetch — note how closely 49/80/117 tracks the 40/70/110
+`SIMULATED_ORIGIN_LATENCY_MS` settings. Raw Redis Pub/Sub delivery is single-digit ms and is
+reported separately as `lastInvalidation.propagationMs` on each edge's `/metrics`.
+
+Run `node load-tests/benchmark.js` to reproduce (pure Node, no k6 required), then
+`node load-tests/invalidation-latency.js` for the purge rows.
+
+### A modelling correction worth understanding
+
+The first version of this simulation only faked the **edge→origin** leg
+(`SIMULATED_ORIGIN_LATENCY_MS`, applied on a cache miss). The baseline — a client hitting the
+origin directly — paid *no* simulated distance, because everything runs on localhost.
+
+That made the benchmark report a **negative** latency reduction — measured at −93.7% during
+development, i.e. the "CDN" was ~2× slower than not using it. The CDN path was two hops
+(client → routing → edge) against the origin's one, so it was pure overhead with none of the
+modelled benefit. A CDN's entire advantage comes from the client being *far* from the origin and
+*near* an edge; leaving the client→origin leg at zero measures the cost and discards the benefit.
+
+The fix was to model that missing leg: `SIMULATED_CLIENT_LATENCY_MS` on the origin, applied only
+to direct client requests. Edge fetches send an `X-MiniCDN-Edge` header and are exempt, since
+they already applied their own region-specific delay for that same long-haul hop — charging both
+would double-count it. Verified empirically: origin direct ≈ 113 ms, edge cold miss ≈ 122 ms (not
+≈ 220 ms), edge warm hit ≈ 2 ms.
+
+This is a modelling fix, not a thumb on the scale — it makes the simulation match the physical
+situation it claims to represent. The distances are still simulated, and any honest presentation
+of these numbers has to say so.
 
 See [`load-tests/README.md`](../load-tests/README.md) for exact commands. Summary:
 
@@ -219,6 +261,16 @@ simulated origin latency settings (`SIMULATED_ORIGIN_LATENCY_MS` per edge node) 
 - **Cache key design:** see the comment in `shared/src/cacheKey.ts` — query params are folded in
   (sorted), but `Accept-Encoding` variance is explicitly NOT handled in this simplified version
   (noted as a gap, not silently ignored).
+- **How you validated the benchmark itself** (a strong answer to "how do you know your numbers
+  are real?"): the first benchmark run showed a *negative* latency reduction, which surfaced that
+  the simulation modelled only the edge→origin leg and left client→origin at zero — measuring the
+  CDN's overhead without its benefit. See §8. Being able to say "my first result was −93.7%, here's
+  the modelling flaw that caused it and how I fixed it" is more credible than a clean number with
+  no story.
+- **Why cache MISS is slower than no CDN at all** (225.6 ms vs 122.4 ms baseline): a miss pays the
+  routing hop *plus* the edge→origin fetch. This is why hit ratio is the metric that matters — and
+  why real CDNs invest heavily in cache warming, longer TTLs, and origin shielding (§10) to keep
+  the miss path rare.
 - **Scaling the routing layer itself:** currently a single instance — single point of failure.
   Real fix: run N stateless routing instances behind a plain round-robin LB (routing decisions
   don't depend on sticky state), with health-poll state either duplicated per instance or moved

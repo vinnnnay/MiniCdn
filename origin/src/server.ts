@@ -13,6 +13,40 @@ const PURGE_CHANNEL = 'minicdn:purge';
 // use one default plus a per-request override for demo purposes.
 const DEFAULT_MAX_AGE = Number(process.env.DEFAULT_MAX_AGE_SECONDS || 30);
 
+/**
+ * Simulated client→origin network latency, in milliseconds.
+ *
+ * Why this exists: everything in this project runs on one machine, so there
+ * is no real network distance anywhere. The edge nodes already fake their
+ * own distance to the origin (SIMULATED_ORIGIN_LATENCY_MS, applied on a
+ * cache miss) — but without this, a client hitting the origin DIRECTLY pays
+ * no distance at all, which makes the origin look artificially fast and the
+ * CDN look pointless (it measures as pure added overhead).
+ *
+ * A CDN's entire advantage comes from the client being far from the origin
+ * and near an edge. Modelling only the edge→origin leg and leaving
+ * client→origin at zero measures the overhead without the benefit, so the
+ * benchmark in load-tests/benchmark.js reports a *negative* latency
+ * reduction. This constant closes that gap.
+ *
+ * It is applied ONLY to direct client requests. Requests from an edge node
+ * (identified by the X-MiniCDN-Edge header the edge sends) skip it, because
+ * the edge has already applied its own region-specific delay for that same
+ * long-haul leg — applying both would double-count it.
+ *
+ * The default (110ms) matches the Asia edge's SIMULATED_ORIGIN_LATENCY_MS,
+ * i.e. it represents a far-from-origin client such as the `singapore`
+ * benchmark location: that client and the Singapore edge are roughly
+ * equidistant from a US origin. If you benchmark with a different
+ * CLIENT_LOC, set this to that region's edge value (40 US / 70 EU / 110
+ * Asia) so the comparison stays apples-to-apples.
+ */
+const SIMULATED_CLIENT_LATENCY_MS = Number(process.env.SIMULATED_CLIENT_LATENCY_MS || 110);
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const app = express();
 const store = new OriginStore();
 const publisher = new Redis(REDIS_URL);
@@ -28,13 +62,21 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'origin', uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000) });
 });
 
-app.get('/assets/*', (req: Request, res: Response) => {
+app.get('/assets/*', async (req: Request, res: Response) => {
   const key = req.params[0];
   const asset = store.get(key);
 
   if (!asset) {
     res.status(404).json({ error: 'not_found', key });
     return;
+  }
+
+  // Model the client→origin long-haul leg (see SIMULATED_CLIENT_LATENCY_MS).
+  // Edge nodes identify themselves and are exempt: they already paid their
+  // own simulated distance for this leg before calling us.
+  const fromEdge = Boolean(req.header('X-MiniCDN-Edge'));
+  if (!fromEdge && SIMULATED_CLIENT_LATENCY_MS > 0) {
+    await sleep(SIMULATED_CLIENT_LATENCY_MS);
   }
 
   const maxAge = Number(req.query.maxAge) || DEFAULT_MAX_AGE;

@@ -1,7 +1,30 @@
 # Load tests
 
-Requires [k6](https://k6.io/docs/get-started/installation/) installed locally, and the full
-stack running (`docker compose up`, or each service via `npm run dev`).
+All of these need the full stack running (`docker compose up`, or `./run-local.sh`).
+
+## Quickest path — no extra tooling
+
+`benchmark.js` and `invalidation-latency.js` are plain Node scripts with no dependencies, so
+they work without installing anything:
+
+```bash
+node load-tests/benchmark.js             # baseline vs CDN latency + hit ratio
+node load-tests/invalidation-latency.js  # purge propagation across all edges
+```
+
+`benchmark.js` prints a paste-ready markdown table for the README. It covers the same ground as
+the two k6 scripts below (which remain if you prefer k6's reporting or want to push heavier
+load). Options via env vars: `REQUESTS`, `CONCURRENCY`, `CLIENT_LOC`, `ORIGIN_URL`, `ROUTING_URL`.
+
+> If you change `CLIENT_LOC`, also set the origin's `SIMULATED_CLIENT_LATENCY_MS` to that
+> region's edge value (40 US / 70 EU / 110 Asia) so the baseline models the same distance the
+> chosen edge does — otherwise the comparison is skewed. See `.env.example`.
+
+---
+
+## k6 variants
+
+The scripts below require [k6](https://k6.io/docs/get-started/installation/) installed locally.
 
 ## 1. Baseline — direct to origin
 

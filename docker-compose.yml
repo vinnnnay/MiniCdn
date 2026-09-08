@@ -19,6 +19,10 @@ services:
       PORT: 4000
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       DEFAULT_MAX_AGE_SECONDS: ${DEFAULT_MAX_AGE_SECONDS:-30}
+      # Models the client→origin long-haul leg so the benchmark's baseline
+      # isn't unrealistically fast. Edge fetches are exempt (they send
+      # X-MiniCDN-Edge). See .env.example for the full rationale.
+      SIMULATED_CLIENT_LATENCY_MS: ${SIMULATED_CLIENT_LATENCY_MS:-110}
     depends_on:
       redis:
         condition: service_healthy

@@ -91,7 +91,11 @@ app.get('/assets/*', async (req: Request, res: Response) => {
     }
 
     const stale = cache.peek(cacheKey);
-    const headers: Record<string, string> = {};
+    // Identify ourselves as an edge node. The origin uses this to skip its
+    // simulated client→origin latency, since we've already applied our own
+    // region-specific delay above for that same long-haul leg (see the
+    // SIMULATED_CLIENT_LATENCY_MS comment in origin/src/server.ts).
+    const headers: Record<string, string> = { 'X-MiniCDN-Edge': NODE_ID };
     if (stale) headers['If-None-Match'] = stale.etag;
 
     const upstreamUrl = `${ORIGIN_URL}/assets/${key}${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`;
