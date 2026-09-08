@@ -1,0 +1,8 @@
+{
+  "appName": "MiniCDN Demo",
+  "featureFlags": {
+    "newCheckout": true,
+    "darkMode": true
+  },
+  "generatedAt": "2026-09-08T05:20:08.551Z"
+}

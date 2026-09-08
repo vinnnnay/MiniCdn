@@ -1,0 +1,36 @@
+# Fly.io deployment config — MiniCDN edge node, US region.
+#
+# Deploy from the REPO ROOT:
+#   fly launch --config edge/fly.us.toml --no-deploy
+#   fly secrets set REDIS_URL=<your-redis-connection-string> --config edge/fly.us.toml
+#   fly secrets set ORIGIN_URL=https://minicdn-origin.fly.dev --config edge/fly.us.toml
+#   fly deploy --config edge/fly.us.toml
+#
+# ORIGIN_URL must be the real public URL of your deployed origin app
+# (origin/fly.toml's `app` name + ".fly.dev", or a custom domain).
+app = "minicdn-edge-us"          # must be globally unique on Fly — change if taken
+primary_region = "iad"           # Virginia, US
+
+[build]
+  dockerfile = "edge/Dockerfile"
+
+[env]
+  PORT = "4001"
+  NODE_ID = "us"
+  REGION = "iad"
+  MAX_CACHE_ENTRIES = "200"
+  # ORIGIN_URL and REDIS_URL are SECRETS — see `fly secrets set` above.
+  # Not needed in production: SIMULATED_ORIGIN_LATENCY_MS (that was only
+  # ever for faking cross-region delay when everything ran on one machine).
+
+[http_service]
+  internal_port = 4001
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

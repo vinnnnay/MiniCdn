@@ -1,0 +1,21 @@
+{
+  "name": "minicdn",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MiniCDN — a distributed content delivery network with geo-aware routing and cache invalidation",
+  "workspaces": [
+    "origin",
+    "edge",
+    "routing",
+    "shared"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:origin": "npm run dev --workspace=origin",
+    "dev:edge": "npm run dev --workspace=edge",
+    "dev:routing": "npm run dev --workspace=routing"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

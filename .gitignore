@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.local
+.DS_Store
+data/origin-assets/.cache/
+k6-results/
+*.tsbuildinfo

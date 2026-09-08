@@ -1,0 +1,104 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "name": "Widget #1",
+      "price": 5
+    },
+    {
+      "id": 2,
+      "name": "Widget #2",
+      "price": 6.25
+    },
+    {
+      "id": 3,
+      "name": "Widget #3",
+      "price": 7.5
+    },
+    {
+      "id": 4,
+      "name": "Widget #4",
+      "price": 8.75
+    },
+    {
+      "id": 5,
+      "name": "Widget #5",
+      "price": 10
+    },
+    {
+      "id": 6,
+      "name": "Widget #6",
+      "price": 11.25
+    },
+    {
+      "id": 7,
+      "name": "Widget #7",
+      "price": 12.5
+    },
+    {
+      "id": 8,
+      "name": "Widget #8",
+      "price": 13.75
+    },
+    {
+      "id": 9,
+      "name": "Widget #9",
+      "price": 15
+    },
+    {
+      "id": 10,
+      "name": "Widget #10",
+      "price": 16.25
+    },
+    {
+      "id": 11,
+      "name": "Widget #11",
+      "price": 17.5
+    },
+    {
+      "id": 12,
+      "name": "Widget #12",
+      "price": 18.75
+    },
+    {
+      "id": 13,
+      "name": "Widget #13",
+      "price": 20
+    },
+    {
+      "id": 14,
+      "name": "Widget #14",
+      "price": 21.25
+    },
+    {
+      "id": 15,
+      "name": "Widget #15",
+      "price": 22.5
+    },
+    {
+      "id": 16,
+      "name": "Widget #16",
+      "price": 23.75
+    },
+    {
+      "id": 17,
+      "name": "Widget #17",
+      "price": 25
+    },
+    {
+      "id": 18,
+      "name": "Widget #18",
+      "price": 26.25
+    },
+    {
+      "id": 19,
+      "name": "Widget #19",
+      "price": 27.5
+    },
+    {
+      "id": 20,
+      "name": "Widget #20",
+      "price": 28.75
+    }
+  ]
+}

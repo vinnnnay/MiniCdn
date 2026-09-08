@@ -1,0 +1,112 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  origin:
+    build:
+      context: .
+      dockerfile: origin/Dockerfile
+    ports:
+      - '${ORIGIN_PORT:-4000}:4000'
+    environment:
+      PORT: 4000
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      DEFAULT_MAX_AGE_SECONDS: ${DEFAULT_MAX_AGE_SECONDS:-30}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  edge-us:
+    build:
+      context: .
+      dockerfile: edge/Dockerfile
+    ports:
+      - '${EDGE_US_PORT:-4001}:4001'
+    environment:
+      PORT: 4001
+      NODE_ID: ${EDGE_US_NODE_ID:-us}
+      REGION: ${EDGE_US_REGION:-iad}
+      ORIGIN_URL: http://origin:4000
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      MAX_CACHE_ENTRIES: ${MAX_CACHE_ENTRIES:-200}
+      SIMULATED_ORIGIN_LATENCY_MS: ${EDGE_US_SIMULATED_ORIGIN_LATENCY_MS:-40}
+    depends_on:
+      redis:
+        condition: service_healthy
+      origin:
+        condition: service_started
+
+  edge-eu:
+    build:
+      context: .
+      dockerfile: edge/Dockerfile
+    ports:
+      - '${EDGE_EU_PORT:-4002}:4001'
+    environment:
+      PORT: 4001
+      NODE_ID: ${EDGE_EU_NODE_ID:-eu}
+      REGION: ${EDGE_EU_REGION:-fra}
+      ORIGIN_URL: http://origin:4000
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      MAX_CACHE_ENTRIES: ${MAX_CACHE_ENTRIES:-200}
+      SIMULATED_ORIGIN_LATENCY_MS: ${EDGE_EU_SIMULATED_ORIGIN_LATENCY_MS:-70}
+    depends_on:
+      redis:
+        condition: service_healthy
+      origin:
+        condition: service_started
+
+  edge-asia:
+    build:
+      context: .
+      dockerfile: edge/Dockerfile
+    ports:
+      - '${EDGE_ASIA_PORT:-4003}:4001'
+    environment:
+      PORT: 4001
+      NODE_ID: ${EDGE_ASIA_NODE_ID:-asia}
+      REGION: ${EDGE_ASIA_REGION:-sin}
+      ORIGIN_URL: http://origin:4000
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      MAX_CACHE_ENTRIES: ${MAX_CACHE_ENTRIES:-200}
+      SIMULATED_ORIGIN_LATENCY_MS: ${EDGE_ASIA_SIMULATED_ORIGIN_LATENCY_MS:-110}
+    depends_on:
+      redis:
+        condition: service_healthy
+      origin:
+        condition: service_started
+
+  routing:
+    build:
+      context: .
+      dockerfile: routing/Dockerfile
+    ports:
+      - '${ROUTING_PORT:-5000}:5000'
+    environment:
+      PORT: 5000
+      ROUTING_MODE: ${ROUTING_MODE:-proxy}
+      HEALTH_POLL_INTERVAL_MS: ${HEALTH_POLL_INTERVAL_MS:-5000}
+      EDGE_US_URL: http://edge-us:4001
+      EDGE_EU_URL: http://edge-eu:4001
+      EDGE_ASIA_URL: http://edge-asia:4001
+    depends_on:
+      - edge-us
+      - edge-eu
+      - edge-asia
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    ports:
+      - '5173:5173'
+    depends_on:
+      - routing
+      - origin

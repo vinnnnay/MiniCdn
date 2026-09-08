@@ -1,0 +1,31 @@
+# Fly.io deployment config — MiniCDN edge node, EU region.
+#
+# Deploy from the REPO ROOT:
+#   fly launch --config edge/fly.eu.toml --no-deploy
+#   fly secrets set REDIS_URL=<your-redis-connection-string> --config edge/fly.eu.toml
+#   fly secrets set ORIGIN_URL=https://minicdn-origin.fly.dev --config edge/fly.eu.toml
+#   fly deploy --config edge/fly.eu.toml
+app = "minicdn-edge-eu"          # must be globally unique on Fly — change if taken
+primary_region = "fra"           # Frankfurt, DE
+
+[build]
+  dockerfile = "edge/Dockerfile"
+
+[env]
+  PORT = "4001"
+  NODE_ID = "eu"
+  REGION = "fra"
+  MAX_CACHE_ENTRIES = "200"
+  # ORIGIN_URL and REDIS_URL are SECRETS — see `fly secrets set` above.
+
+[http_service]
+  internal_port = 4001
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

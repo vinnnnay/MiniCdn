@@ -1,0 +1,33 @@
+# Fly.io deployment config for the MiniCDN origin server.
+#
+# Deploy from the REPO ROOT (not this directory), so the Docker build
+# context matches origin/Dockerfile's expectations:
+#   fly launch --config origin/fly.toml --no-deploy   (first time only, to create the app)
+#   fly secrets set REDIS_URL=<your-redis-connection-string> --config origin/fly.toml
+#   fly deploy --config origin/fly.toml
+#
+# Pick ONE real region for the origin — it doesn't need to be multi-region,
+# only the edge nodes do. `iad` (Virginia, US) matches this project's docs.
+app = "minicdn-origin"          # must be globally unique on Fly — change if taken
+primary_region = "iad"
+
+[build]
+  dockerfile = "origin/Dockerfile"
+
+[env]
+  PORT = "4000"
+  DEFAULT_MAX_AGE_SECONDS = "30"
+  # REDIS_URL is a SECRET, not set here — see `fly secrets set` above.
+  # Never commit a real Redis connection string into this file.
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = false   # keep the origin always-on; edges depend on it
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
